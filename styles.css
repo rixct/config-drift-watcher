@@ -1,107 +1,205 @@
 /* Config Drift Watcher */
 
 .cdw-block {
+  /* Diff colors: subtle tints that read well on light and dark themes. */
+  --cdw-add-bg: rgba(46, 160, 67, 0.13);
+  --cdw-add-fg: #1a7f37;
+  --cdw-del-bg: rgba(248, 81, 73, 0.13);
+  --cdw-del-fg: #cf222e;
+  --cdw-warn-bg: rgba(191, 135, 0, 0.15);
+  --cdw-warn-fg: #9a6700;
+
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
-  padding: 0.6em 0.8em;
-  margin: 0.5em 0;
+  overflow: hidden;
+  margin: 0.75em 0;
+}
+
+.theme-dark .cdw-block {
+  --cdw-add-fg: #3fb950;
+  --cdw-del-fg: #f85149;
+  --cdw-warn-fg: #d29922;
+}
+
+/* ---- Header ---- */
+.cdw-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.5em 0.75em;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.cdw-header-icon {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+.cdw-header-icon svg {
+  width: 1em;
+  height: 1em;
 }
 
 .cdw-target {
   font-family: var(--font-monospace);
   font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-  margin-bottom: 0.4em;
+  color: var(--text-normal);
   word-break: break-all;
 }
 
+/* ---- Documented content ---- */
 pre.cdw-doc {
-  margin: 0 0 0.5em 0;
+  margin: 0;
+  padding: 0.65em 0.85em;
+  background: var(--code-background);
+  border: none;
+  border-radius: 0;
   max-height: 22em;
   overflow: auto;
 }
 
+pre.cdw-doc code {
+  font-family: var(--font-monospace);
+  font-size: var(--code-size, var(--font-ui-smaller));
+  white-space: pre;
+}
+
+.cdw-doc-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* ---- Toolbar ---- */
 .cdw-toolbar {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  flex-wrap: wrap;
+  padding: 0.5em 0.75em;
+  background: var(--background-secondary);
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.cdw-spacer {
+  flex: 1 1 auto;
 }
 
 .cdw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   cursor: pointer;
 }
 
 .cdw-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: default;
 }
 
+.cdw-btn-icon {
+  display: inline-flex;
+}
+
+.cdw-btn-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* ---- Status badge ---- */
 .cdw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.2em 0.6em;
+  border-radius: 999px;
   font-size: var(--font-ui-smaller);
-  font-weight: var(--font-semibold);
-  padding: 0.1em 0.55em;
-  border-radius: var(--radius-s);
+  font-weight: var(--font-medium);
   white-space: nowrap;
 }
 
-.cdw-badge.is-unknown {
-  color: var(--text-muted);
-  background: var(--background-modifier-border);
+.cdw-badge-icon {
+  display: inline-flex;
 }
 
+.cdw-badge-icon svg {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+.cdw-badge.is-unknown,
 .cdw-badge.is-checking {
   color: var(--text-muted);
-  background: var(--background-modifier-border);
+  background: var(--background-modifier-hover);
 }
 
 .cdw-badge.is-synced {
-  color: var(--text-success);
-  background: var(--background-modifier-success);
+  color: var(--cdw-add-fg);
+  background: var(--cdw-add-bg);
 }
 
 .cdw-badge.is-drift {
-  color: var(--text-warning);
-  background: var(--background-modifier-border);
+  color: var(--cdw-warn-fg);
+  background: var(--cdw-warn-bg);
 }
 
 .cdw-badge.is-error {
-  color: var(--text-error);
-  background: var(--background-modifier-error);
+  color: var(--cdw-del-fg);
+  background: var(--cdw-del-bg);
+}
+
+@keyframes cdw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cdw-badge.is-checking .cdw-badge-icon svg {
+  animation: cdw-spin 0.9s linear infinite;
+}
+
+/* ---- Messages (errors) ---- */
+.cdw-message {
+  padding: 0.6em 0.85em;
+  font-size: var(--font-ui-smaller);
 }
 
 .cdw-error {
-  color: var(--text-error);
-  font-size: var(--font-ui-smaller);
-  margin: 0.4em 0 0 0;
+  color: var(--cdw-del-fg);
 }
 
-.cdw-diff {
-  margin-top: 0.6em;
+.is-error-card .cdw-message {
   border-top: 1px solid var(--background-modifier-border);
-  padding-top: 0.5em;
+}
+
+/* ---- Diff ---- */
+.cdw-diff {
+  padding: 0.65em 0.75em 0.75em;
+  border-top: 1px solid var(--background-modifier-border);
 }
 
 .cdw-legend {
   display: flex;
-  gap: 1em;
+  gap: 1.2em;
+  margin-bottom: 0.5em;
   font-size: var(--font-ui-smaller);
-  margin-bottom: 0.4em;
-}
-
-.cdw-legend-item.removed {
-  color: var(--text-error);
+  font-family: var(--font-monospace);
 }
 
 .cdw-legend-item.added {
-  color: var(--text-success);
+  color: var(--cdw-add-fg);
+}
+
+.cdw-legend-item.removed {
+  color: var(--cdw-del-fg);
 }
 
 .cdw-diff-body {
   font-family: var(--font-monospace);
   font-size: var(--font-ui-smaller);
-  line-height: 1.45;
-  overflow-x: auto;
+  line-height: 1.5;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  overflow: auto;
 }
 
 .cdw-diff-line {
@@ -110,34 +208,42 @@ pre.cdw-doc {
 }
 
 .cdw-gutter {
-  width: 1.2em;
-  flex: 0 0 1.2em;
+  flex: 0 0 1.7em;
   text-align: center;
-  color: var(--text-faint);
   user-select: none;
+  opacity: 0.85;
 }
 
 .cdw-content {
   flex: 1 1 auto;
+  padding-right: 0.6em;
+}
+
+.cdw-diff-line.context {
+  color: var(--text-muted);
+}
+
+.cdw-diff-line.context .cdw-gutter {
+  color: var(--text-faint);
 }
 
 .cdw-diff-line.added {
-  background: var(--background-modifier-success);
+  background: var(--cdw-add-bg);
 }
 
 .cdw-diff-line.added .cdw-gutter {
-  color: var(--text-success);
+  color: var(--cdw-add-fg);
 }
 
 .cdw-diff-line.removed {
-  background: var(--background-modifier-error);
+  background: var(--cdw-del-bg);
 }
 
 .cdw-diff-line.removed .cdw-gutter {
-  color: var(--text-error);
+  color: var(--cdw-del-fg);
 }
 
-/* Settings */
+/* ---- Settings ---- */
 .cdw-profile {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);

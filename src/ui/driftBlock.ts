@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, Notice, TFile } from "obsidian";
+import { MarkdownPostProcessorContext, Notice, TFile, setIcon } from "obsidian";
 import type ConfigDriftWatcherPlugin from "../main";
 import { parseDriftBlock, BlockParseError } from "../parser";
 import { computeDrift, parseCommentPrefixes } from "../diff";
@@ -8,6 +8,14 @@ import { DriftResult, ParsedBlock, ServerProfile } from "../types";
 
 type BadgeState = "unknown" | "checking" | "synced" | "drift" | "error";
 
+const BADGE_ICON: Record<BadgeState, string> = {
+  unknown: "help-circle",
+  checking: "refresh-cw",
+  synced: "check-circle",
+  drift: "alert-triangle",
+  error: "x-circle",
+};
+
 function findProfile(
   plugin: ConfigDriftWatcherPlugin,
   alias: string,
@@ -15,13 +23,54 @@ function findProfile(
   return plugin.settings.profiles.find((p) => p.alias === alias);
 }
 
+/** Render a status pill: a lucide icon plus a readable text label. */
 function setBadge(badgeEl: HTMLElement, state: BadgeState, text: string): void {
   badgeEl.className = "cdw-badge is-" + state;
-  badgeEl.setText(text);
+  badgeEl.empty();
+  const icon = badgeEl.createSpan({ cls: "cdw-badge-icon" });
+  setIcon(icon, BADGE_ICON[state]);
+  badgeEl.createSpan({ cls: "cdw-badge-text", text });
 }
 
-/** Entry point registered as the `drift` code block processor. */
+function makeButton(
+  parent: HTMLElement,
+  icon: string,
+  label: string,
+  primary = false,
+): HTMLButtonElement {
+  const btn = parent.createEl("button", {
+    cls: "cdw-btn" + (primary ? " mod-cta" : ""),
+  });
+  setIcon(btn.createSpan({ cls: "cdw-btn-icon" }), icon);
+  btn.createSpan({ text: label });
+  return btn;
+}
+
+/** Entry point registered as the `drift` code block processor. Runs in both
+ *  reading view and live preview. Wrapped so any failure shows a visible error
+ *  instead of letting Obsidian fall back to rendering the raw code block. */
 export function renderDriftBlock(
+  plugin: ConfigDriftWatcherPlugin,
+  source: string,
+  el: HTMLElement,
+  ctx: MarkdownPostProcessorContext,
+): void {
+  try {
+    render(plugin, source, el, ctx);
+  } catch (e) {
+    el.empty();
+    const root = el.createDiv({ cls: "cdw-block is-error-card" });
+    const header = root.createDiv({ cls: "cdw-header" });
+    const badge = header.createDiv();
+    setBadge(badge, "error", "Render error");
+    root.createDiv({
+      cls: "cdw-message cdw-error",
+      text: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
+function render(
   plugin: ConfigDriftWatcherPlugin,
   source: string,
   el: HTMLElement,
@@ -35,31 +84,39 @@ export function renderDriftBlock(
     parsed = parseDriftBlock(source);
   } catch (e) {
     const message = e instanceof BlockParseError ? e.message : String(e);
-    const badge = root.createDiv();
-    setBadge(badge, "error", "⛔ invalid block");
-    root.createEl("p", { cls: "cdw-error", text: message });
+    const header = root.createDiv({ cls: "cdw-header" });
+    const badge = header.createDiv();
+    setBadge(badge, "error", "Invalid block");
+    root.createDiv({ cls: "cdw-message cdw-error", text: message });
     return;
   }
 
-  // Caption: which server/file this block documents.
-  root.createDiv({
+  // Header: which server/file this block documents.
+  const header = root.createDiv({ cls: "cdw-header" });
+  setIcon(header.createSpan({ cls: "cdw-header-icon" }), "server");
+  header.createSpan({
     cls: "cdw-target",
     text: `${parsed.alias}:${parsed.remotePath}`,
   });
 
   // The documented content, rendered as a read-only code block.
   const pre = root.createEl("pre", { cls: "cdw-doc" });
-  pre.createEl("code", { text: parsed.body });
+  if (parsed.body.trim() === "") {
+    pre.createEl("code", {
+      cls: "cdw-doc-empty",
+      text: "(empty — use “Snapshot from server” to capture a baseline)",
+    });
+  } else {
+    pre.createEl("code", { text: parsed.body });
+  }
 
-  // Toolbar: status badge + actions.
+  // Toolbar: status badge on the left, actions on the right.
   const toolbar = root.createDiv({ cls: "cdw-toolbar" });
   const badge = toolbar.createDiv();
-  setBadge(badge, "unknown", "❓ not checked");
-
-  const checkBtn = toolbar.createEl("button", { cls: "cdw-btn" });
-  checkBtn.createSpan({ text: "Check drift" });
-  const snapshotBtn = toolbar.createEl("button", { cls: "cdw-btn" });
-  snapshotBtn.createSpan({ text: "Snapshot from server" });
+  setBadge(badge, "unknown", "Not checked");
+  toolbar.createDiv({ cls: "cdw-spacer" });
+  const checkBtn = makeButton(toolbar, "refresh-cw", "Check drift", true);
+  const snapshotBtn = makeButton(toolbar, "download", "Snapshot from server");
 
   const diffEl = root.createDiv({ cls: "cdw-diff" });
   diffEl.hide();
@@ -69,14 +126,21 @@ export function renderDriftBlock(
     snapshotBtn.disabled = busy;
   };
 
+  const showError = (message: string) => {
+    setBadge(badge, "error", "Error");
+    diffEl.empty();
+    diffEl.show();
+    diffEl.createDiv({ cls: "cdw-message cdw-error", text: message });
+  };
+
   const resolveProfileOrWarn = (): ServerProfile | null => {
     const profile = findProfile(plugin, parsed.alias);
     if (!profile) {
-      setBadge(badge, "error", "⛔ unknown alias");
+      setBadge(badge, "error", "Unknown alias");
       diffEl.empty();
       diffEl.show();
-      diffEl.createEl("p", {
-        cls: "cdw-error",
+      diffEl.createDiv({
+        cls: "cdw-message cdw-error",
         text: `No server profile named "${parsed.alias}". Add it in plugin settings.`,
       });
     }
@@ -87,7 +151,7 @@ export function renderDriftBlock(
     const profile = resolveProfileOrWarn();
     if (!profile) return;
     setBusy(true);
-    setBadge(badge, "checking", "… checking");
+    setBadge(badge, "checking", "Checking…");
     diffEl.empty();
     diffEl.hide();
     try {
@@ -103,11 +167,7 @@ export function renderDriftBlock(
       });
       renderResult(badge, diffEl, result);
     } catch (e) {
-      const message = e instanceof RemoteReadError ? e.message : String(e);
-      setBadge(badge, "error", "⛔ error");
-      diffEl.empty();
-      diffEl.show();
-      diffEl.createEl("p", { cls: "cdw-error", text: message });
+      showError(e instanceof RemoteReadError ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -131,7 +191,7 @@ export function renderDriftBlock(
     }
 
     setBusy(true);
-    setBadge(badge, "checking", "… reading");
+    setBadge(badge, "checking", "Reading…");
     try {
       const remote = await readRemoteFile(
         profile,
@@ -142,11 +202,7 @@ export function renderDriftBlock(
       new Notice(`Snapshot captured from ${parsed.alias}:${parsed.remotePath}`);
       // The note change triggers a re-render of this block automatically.
     } catch (e) {
-      const message = e instanceof RemoteReadError ? e.message : String(e);
-      setBadge(badge, "error", "⛔ error");
-      diffEl.empty();
-      diffEl.show();
-      diffEl.createEl("p", { cls: "cdw-error", text: message });
+      showError(e instanceof RemoteReadError ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -159,14 +215,14 @@ function renderResult(
   result: DriftResult,
 ): void {
   if (result.inSync) {
-    setBadge(badge, "synced", "✅ in sync");
+    setBadge(badge, "synced", "In sync");
     diffEl.empty();
     diffEl.hide();
     return;
   }
 
   const changed = result.onlyInNote + result.onlyOnServer;
-  setBadge(badge, "drift", `⚠️ drift: ${changed} line${changed === 1 ? "" : "s"}`);
+  setBadge(badge, "drift", `Drift · ${changed} line${changed === 1 ? "" : "s"}`);
 
   diffEl.empty();
   diffEl.show();
@@ -184,7 +240,7 @@ function renderResult(
   const body = diffEl.createDiv({ cls: "cdw-diff-body" });
   for (const line of result.lines) {
     const row = body.createDiv({ cls: "cdw-diff-line " + line.type });
-    const prefix = line.type === "added" ? "+" : line.type === "removed" ? "−" : " ";
+    const prefix = line.type === "added" ? "+" : line.type === "removed" ? "−" : " ";
     row.createSpan({ cls: "cdw-gutter", text: prefix });
     row.createSpan({ cls: "cdw-content", text: line.value });
   }
