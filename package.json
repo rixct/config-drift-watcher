@@ -1,0 +1,34 @@
+{
+  "name": "config-drift-watcher",
+  "version": "0.0.1",
+  "description": "Obsidian plugin that detects when a server's actual configuration has diverged from what you documented.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "tsc -p tsconfig.test.json && node --test test/*.test.cjs",
+    "spike:sftp": "node scripts/sftp-spike.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "sftp",
+    "config",
+    "drift",
+    "devops"
+  ],
+  "author": "rixct",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/node": "^22.0.0",
+    "@types/ssh2": "^1.15.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.24.0",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "diff": "^7.0.0",
+    "ssh2": "^1.16.0"
+  }
+}
