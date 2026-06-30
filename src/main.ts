@@ -14,23 +14,11 @@ export default class ConfigDriftWatcherPlugin extends Plugin {
     });
 
     this.addSettingTab(new ConfigDriftSettingTab(this.app, this));
-
-    this.addCommand({
-      id: "open-config-drift-settings",
-      name: "Open Config Drift Watcher settings",
-      callback: () => {
-        // Opens Obsidian settings on this plugin's tab.
-        const setting = (this.app as unknown as {
-          setting: { open: () => void; openTabById: (id: string) => void };
-        }).setting;
-        setting.open();
-        setting.openTabById(this.manifest.id);
-      },
-    });
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = (await this.loadData()) as Partial<DriftSettings> | null;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
   }
 
   async saveSettings(): Promise<void> {
