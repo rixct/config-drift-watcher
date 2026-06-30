@@ -76,13 +76,12 @@ export class ConfigDriftSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName("Server profiles").setHeading();
 
-    const intro = containerEl.createEl("p", {
-      cls: "setting-item-description",
+    containerEl.createEl("p", {
+      cls: "setting-item-description cdw-profiles-intro",
       text:
         "Each alias is referenced from a note as target: alias:/path. " +
         "Credentials stay here and are never written into a note.",
     });
-    intro.style.marginTop = "0";
 
     s.profiles.forEach((profile, index) => {
       this.renderProfile(containerEl, profile, index);

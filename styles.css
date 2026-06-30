@@ -24,13 +24,9 @@
 /* In Live Preview, Obsidian wraps the widget in .cm-embed-block and draws a
    hover outline around that wrapper. Our card's vertical margin made the
    wrapper taller than the card, so the outline sat above/below it. Drop the
-   margin inside the wrapper and round it so the outline hugs the card. */
+   margin inside the wrapper so the outline hugs the card. */
 .cm-embed-block .cdw-block {
   margin: 0;
-}
-
-.cm-embed-block:has(.cdw-block) {
-  border-radius: var(--radius-m);
 }
 
 /* ---- Header ---- */
@@ -256,6 +252,10 @@ pre.cdw-doc code {
 }
 
 /* ---- Settings ---- */
+.cdw-profiles-intro {
+  margin-top: 0;
+}
+
 .cdw-profile {
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
