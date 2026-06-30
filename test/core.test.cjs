@@ -6,6 +6,7 @@ const assert = require("node:assert/strict");
 const { parseDriftBlock, BlockParseError } = require("../.test-build/parser.js");
 const { computeDrift, parseCommentPrefixes } = require("../.test-build/diff.js");
 const { spliceBlockBody } = require("../.test-build/snapshot.js");
+const { hostKeyFingerprint, verifyHostKey } = require("../.test-build/hostkey.js");
 
 const noIgnore = {
   ignoreWhitespace: false,
@@ -136,4 +137,32 @@ test("snapshot: fills an empty block body", () => {
     out,
     ["```drift", "target: srv:/x", "a", "b", "```"].join("\n"),
   );
+});
+
+test("hostkey: fingerprint is OpenSSH SHA256 base64 without padding", () => {
+  const fp = hostKeyFingerprint(Buffer.from("some-host-key-bytes"));
+  assert.match(fp, /^SHA256:[A-Za-z0-9+/]+$/);
+  assert.ok(!fp.endsWith("="));
+  // deterministic
+  assert.equal(fp, hostKeyFingerprint(Buffer.from("some-host-key-bytes")));
+});
+
+test("hostkey: trust on first use when no fingerprint is pinned", () => {
+  const { fingerprint, decision } = verifyHostKey(Buffer.from("key"), undefined);
+  assert.equal(decision.ok, true);
+  assert.match(fingerprint, /^SHA256:/);
+});
+
+test("hostkey: accepts a matching pinned fingerprint", () => {
+  const key = Buffer.from("key");
+  const fp = hostKeyFingerprint(key);
+  const { decision } = verifyHostKey(key, fp);
+  assert.equal(decision.ok, true);
+});
+
+test("hostkey: rejects a mismatching pinned fingerprint", () => {
+  const { decision } = verifyHostKey(Buffer.from("real-key"), "SHA256:bogus");
+  assert.equal(decision.ok, false);
+  assert.equal(decision.expected, "SHA256:bogus");
+  assert.match(decision.actual, /^SHA256:/);
 });

@@ -187,5 +187,32 @@ export class ConfigDriftSettingTab extends PluginSettingTab {
           await save();
         });
       });
+
+    new Setting(box)
+      .setName("Host key fingerprint")
+      .setDesc(
+        "SHA-256 host key. Empty = trust on first use, then pinned automatically. " +
+          "Paste a known fingerprint to pin strictly. Forget to re-learn on next connect.",
+      )
+      .addText((t) =>
+        t
+          .setPlaceholder("SHA256:…")
+          .setValue(profile.hostFingerprint ?? "")
+          .onChange(async (v) => {
+            profile.hostFingerprint = v.trim() ? v.trim() : undefined;
+            await save();
+          }),
+      )
+      .addExtraButton((btn) =>
+        btn
+          .setIcon("x")
+          .setTooltip("Forget host key (re-learn on next connection)")
+          .setDisabled(!profile.hostFingerprint)
+          .onClick(async () => {
+            profile.hostFingerprint = undefined;
+            await save();
+            this.display();
+          }),
+      );
   }
 }
