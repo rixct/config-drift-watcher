@@ -23,6 +23,32 @@ function findProfile(
   return plugin.settings.profiles.find((p) => p.alias === alias);
 }
 
+/**
+ * Read a remote file, verifying the host key. On the first successful
+ * connection to a profile with no pinned fingerprint, the fingerprint is
+ * learned and saved (trust on first use), so later connections are pinned.
+ */
+async function readRemote(
+  plugin: ConfigDriftWatcherPlugin,
+  profile: ServerProfile,
+  remotePath: string,
+): Promise<string> {
+  let seenFingerprint: string | null = null;
+  const content = await readRemoteFile(profile, remotePath, {
+    timeoutMs: plugin.settings.connectTimeoutMs,
+    expectedFingerprint: profile.hostFingerprint,
+    onHostKey: (fp) => {
+      seenFingerprint = fp;
+    },
+  });
+  if (!profile.hostFingerprint && seenFingerprint) {
+    profile.hostFingerprint = seenFingerprint;
+    await plugin.saveSettings();
+    new Notice(`Trusted host key for ${profile.alias}:\n${seenFingerprint}`);
+  }
+  return content;
+}
+
 /** Render a status pill: a lucide icon plus a readable text label. */
 function setBadge(badgeEl: HTMLElement, state: BadgeState, text: string): void {
   badgeEl.className = "cdw-badge is-" + state;
@@ -155,11 +181,7 @@ function render(
     diffEl.empty();
     diffEl.hide();
     try {
-      const remote = await readRemoteFile(
-        profile,
-        parsed.remotePath,
-        plugin.settings.connectTimeoutMs,
-      );
+      const remote = await readRemote(plugin, profile, parsed.remotePath);
       const result = computeDrift(parsed.body, remote, {
         ignoreWhitespace: plugin.settings.ignoreWhitespace,
         ignoreComments: plugin.settings.ignoreComments,
@@ -193,11 +215,7 @@ function render(
     setBusy(true);
     setBadge(badge, "checking", "Reading…");
     try {
-      const remote = await readRemoteFile(
-        profile,
-        parsed.remotePath,
-        plugin.settings.connectTimeoutMs,
-      );
+      const remote = await readRemote(plugin, profile, parsed.remotePath);
       await writeSnapshot(plugin, parsed, el, ctx, remote);
       new Notice(`Snapshot captured from ${parsed.alias}:${parsed.remotePath}`);
       // The note change triggers a re-render of this block automatically.

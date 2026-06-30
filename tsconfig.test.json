@@ -10,5 +10,11 @@
     "inlineSources": false,
     "sourceMap": false
   },
-  "include": ["src/types.ts", "src/parser.ts", "src/diff.ts", "src/snapshot.ts"]
+  "include": [
+    "src/types.ts",
+    "src/parser.ts",
+    "src/diff.ts",
+    "src/snapshot.ts",
+    "src/hostkey.ts"
+  ]
 }

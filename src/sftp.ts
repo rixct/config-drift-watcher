@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { ServerProfile } from "./types";
+import { verifyHostKey, HostKeyDecision } from "./hostkey";
 
 /** Thrown for any failure while reading a remote file. Message is user-facing. */
 export class RemoteReadError extends Error {
@@ -10,6 +11,14 @@ export class RemoteReadError extends Error {
     super(message);
     this.name = "RemoteReadError";
   }
+}
+
+export interface ReadOptions {
+  timeoutMs: number;
+  /** Pinned host key fingerprint to verify against. Empty = trust on first use. */
+  expectedFingerprint?: string;
+  /** Called with the server's fingerprint once the host key is seen. */
+  onHostKey?: (fingerprint: string) => void;
 }
 
 function expandTilde(p: string): string {
@@ -24,13 +33,14 @@ function expandTilde(p: string): string {
  * No shell command is ever executed: an SFTP read can only read a file, it
  * cannot run code on the remote host, regardless of how the path is formed.
  *
- * NOTE: host key verification (known_hosts / TOFU pinning) is not yet
- * implemented — see the roadmap. Connections currently trust the host key.
+ * The server's host key is verified against `expectedFingerprint` (when set).
+ * With no pinned fingerprint, the key is trusted on first use and reported via
+ * `onHostKey` so the caller can persist it for later connections.
  */
 export function readRemoteFile(
   profile: ServerProfile,
   remotePath: string,
-  timeoutMs: number,
+  opts: ReadOptions,
 ): Promise<string> {
   let privateKey: Buffer;
   try {
@@ -47,6 +57,7 @@ export function readRemoteFile(
   return new Promise<string>((resolve, reject) => {
     const conn = new Client();
     let settled = false;
+    let mismatch: { expected: string; actual: string } | null = null;
 
     const fail = (message: string) => {
       if (settled) return;
@@ -82,6 +93,15 @@ export function readRemoteFile(
         });
       })
       .on("error", (err: Error) => {
+        if (mismatch) {
+          return fail(
+            `Host key mismatch for ${profile.host}. Expected ${mismatch.expected} ` +
+              `but the server presented ${mismatch.actual}. The server may have ` +
+              `changed, or a machine-in-the-middle is intercepting the connection. ` +
+              `If you trust the change, clear the fingerprint for "${profile.alias}" ` +
+              `in settings and reconnect.`,
+          );
+        }
         fail(`Connection to ${profile.host}:${profile.port} failed: ${err.message}`);
       })
       .connect({
@@ -90,7 +110,15 @@ export function readRemoteFile(
         username: profile.username,
         privateKey,
         passphrase: profile.passphrase || undefined,
-        readyTimeout: timeoutMs,
+        readyTimeout: opts.timeoutMs,
+        hostVerifier: (key: Buffer): boolean => {
+          const { fingerprint, decision }: { fingerprint: string; decision: HostKeyDecision } =
+            verifyHostKey(key, opts.expectedFingerprint);
+          opts.onHostKey?.(fingerprint);
+          if (decision.ok) return true;
+          mismatch = { expected: decision.expected, actual: decision.actual };
+          return false;
+        },
       });
   });
 }

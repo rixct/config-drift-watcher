@@ -11,6 +11,11 @@ export interface ServerProfile {
   privateKeyPath: string;
   /** Optional passphrase if the private key is encrypted. */
   passphrase?: string;
+  /**
+   * Pinned SHA-256 host key fingerprint (e.g. "SHA256:...").
+   * Empty = trust on first use, then pin automatically.
+   */
+  hostFingerprint?: string;
 }
 
 export interface DriftSettings {
