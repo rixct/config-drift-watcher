@@ -39,6 +39,10 @@ const context = await esbuild.context({
     "obsidian",
     "electron",
     "cpu-features",
+    // Native addons: when ssh2's optional native crypto/cpu-features get built
+    // (e.g. on CI), esbuild has no loader for ".node" files. Keep them external
+    // so the require stays; ssh2 catches the missing binding and uses pure JS.
+    "*.node",
     ...builtinModules.filter((m) => m !== "child_process"),
   ],
   format: "cjs",
