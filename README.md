@@ -20,15 +20,18 @@ Whitespace-only and comment-only differences can be ignored via a setting, since
 
 ## Usage
 
-Annotate a code block with a target server alias and a remote path:
+Annotate a `drift` code block with a target server alias and a remote path on
+its first line, followed by the documented content:
 
-    ```
+    ```drift
     target: gammastack-stfox:/etc/network/interfaces
-    ```
     auto eth0
     iface eth0 inet dhcp
     iface eth0 inet6 manual
     ```
+
+The first line must be `target: alias:/absolute/remote/path`. Everything after
+it is the documented content that gets compared against the remote file.
 
 Two actions are available on the block:
 

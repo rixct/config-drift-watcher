@@ -1,1 +1,7 @@
 .DS_Store
+node_modules/
+main.js
+*.map
+data.json
+.test-build/
+.claude/
