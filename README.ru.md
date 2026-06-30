@@ -116,9 +116,13 @@ iface eth0 inet6 manual
 
 ## Установка
 
-### Вручную
+### Из Obsidian (рекомендуется)
 
-Пока не опубликовано в каталоге community-плагинов. До этого — ставь вручную:
+1. Settings → Community plugins → Browse.
+2. Найди «Config Drift Watcher».
+3. Install, затем Enable.
+
+### Вручную
 
 1. Скачай `main.js`, `manifest.json` и `styles.css` из последнего релиза.
 2. Создай папку `config-drift-watcher` внутри `<vault>/.obsidian/plugins/`.
@@ -127,7 +131,7 @@ iface eth0 inet6 manual
 
 ### BRAT (бета)
 
-Если используешь плагин [BRAT](https://github.com/TfTHacker/obsidian42-brat), добавь этот репозиторий (`rixct/config-drift-watcher`), чтобы поставить и автообновлять бету до попадания в каталог.
+Если используешь плагин [BRAT](https://github.com/TfTHacker/obsidian42-brat), добавь этот репозиторий (`rixct/config-drift-watcher`), чтобы тестировать пред-релизные сборки до попадания в каталог.
 
 ## Разработка
 

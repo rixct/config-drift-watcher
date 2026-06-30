@@ -116,9 +116,13 @@ By default each profile learns and pins the server's host key on first connect, 
 
 ## Installation
 
-### Manual
+### From Obsidian (recommended)
 
-Not yet published to the community plugin directory. Until then, install manually:
+1. Open Settings → Community plugins → Browse.
+2. Search for "Config Drift Watcher".
+3. Install, then enable it.
+
+### Manual
 
 1. Download `main.js`, `manifest.json`, and `styles.css` from the latest release.
 2. Create a folder named `config-drift-watcher` inside `<vault>/.obsidian/plugins/`.
@@ -127,7 +131,7 @@ Not yet published to the community plugin directory. Until then, install manuall
 
 ### BRAT (beta)
 
-If you use the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin, add this repository (`rixct/config-drift-watcher`) to install and auto-update the beta before it reaches the community directory.
+If you use the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin, add this repository (`rixct/config-drift-watcher`) to test pre-release builds before they reach the community directory.
 
 ## Development
 
@@ -135,7 +139,7 @@ If you use the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin, add 
 npm install        # install dependencies
 npm run dev        # watch build
 npm run build      # type-check + production bundle
-npm test           # run unit tests (parser, diff, snapshot)
+npm test           # run unit tests (parser, diff, snapshot, host key)
 ```
 
 The plugin bundles `ssh2` and `diff` into a single `main.js` via esbuild.
