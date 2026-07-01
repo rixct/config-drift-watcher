@@ -15,6 +15,9 @@
     "src/parser.ts",
     "src/diff.ts",
     "src/snapshot.ts",
-    "src/hostkey.ts"
+    "src/hostkey.ts",
+    "src/binary.ts",
+    "src/collapse.ts",
+    "src/knownhosts.ts"
   ]
 }

@@ -29,6 +29,16 @@ iface eth0 inet6 manual
 
 > **Important:** the opening ` ```drift ` fence must start at the **beginning of the line** (no leading spaces). An indented code block is rendered as plain Markdown in Reading view and the plugin will not process it.
 
+An optional `ignore:` directive may follow the target line to override the global ignore settings for this block only. Recognized tokens are `whitespace`, `comments`, and `none`:
+
+````markdown
+```drift
+target: gammastack-stfox:/etc/nginx/nginx.conf
+ignore: whitespace comments
+worker_processes auto;
+```
+````
+
 The block renders as a card with a status badge and two actions:
 
 - **Check drift** — reads the current remote file and compares it against the block content without modifying the note. Differences are shown inline below the block.
@@ -50,10 +60,16 @@ The comparison is plain text diffing, line by line. There is no interpretation o
 
 Two comparison options are available in settings, to cut noise on real config files:
 
-- **Ignore whitespace** — treat whitespace-only differences as in sync.
+- **Ignore whitespace** — ignore differences in *leading and trailing* whitespace (indentation, trailing spaces, tabs vs spaces). Whitespace *between* words on a line is still significant.
 - **Ignore comments** — drop comment-only lines (per a configurable list of prefixes, e.g. `#`, `;`, `//`) before diffing.
 
+These can be overridden per block with an `ignore:` directive on the line after `target:` (see Usage), so a noisy file can ignore comments while a strict file compares byte for byte.
+
+Only text files are compared. A binary remote file is detected and reported as an error rather than shown as a meaningless diff.
+
 A trailing newline at the end of the remote file (which the code block never has) is never reported as drift.
+
+When there is drift, long runs of unchanged lines are collapsed into an expandable placeholder so only the changes and a little context are shown (configurable, and can be turned off).
 
 ## Server profiles
 
@@ -88,7 +104,7 @@ This plugin connects to remote servers and handles SSH credentials. Read this be
 
 ### Host key verification
 
-By default each profile learns and pins the server's host key on first connect, and shows the fingerprint in a notice. You can also verify or pin it manually:
+The host key is checked in this order: **`~/.ssh/known_hosts`** first (when the *Verify against known_hosts* setting is on), then a **pinned fingerprint**, then **trust on first use**. If your host is already in `known_hosts` (plain or hashed entries), it is verified against that; otherwise the fingerprint is learned and pinned on first connect and shown in a notice. You can also verify or pin it manually:
 
 - The plugin's fingerprint format matches OpenSSH, so you can compare it with:
 
@@ -101,17 +117,18 @@ By default each profile learns and pins the server's host key on first connect, 
 
 ## Limitations
 
+- Requires Obsidian 1.13 or newer, on desktop.
 - Single file per code block. No directory-wide drift detection in the current version.
+- Text files only. Binary remote files are rejected rather than diffed.
 - Read-only by design. The plugin will never apply a fix to the remote server automatically.
 - Requires SSH key-based authentication. Password authentication is not supported.
 - No scheduling. Checks run on demand, not on a timer, in the current version.
 
 ## Roadmap
 
-- `known_hosts` file integration (fingerprints are currently pinned per profile)
 - Optional scheduled background checks with a notification on drift
 - Directory and multi-file watching
-- Diff ignoring rules per block (whitespace, comments, ordering)
+- Vault-wide "check all drift blocks" report
 - Optional integration with an LLM to suggest a fix command for a detected drift, off by default
 
 ## Installation
@@ -139,7 +156,7 @@ If you use the [BRAT](https://github.com/TfTHacker/obsidian42-brat) plugin, add 
 npm install        # install dependencies
 npm run dev        # watch build
 npm run build      # type-check + production bundle
-npm test           # run unit tests (parser, diff, snapshot, host key)
+npm test           # run unit tests (parser, diff, snapshot, host key, known_hosts, collapse, binary)
 ```
 
 The plugin bundles `ssh2` and `diff` into a single `main.js` via esbuild.

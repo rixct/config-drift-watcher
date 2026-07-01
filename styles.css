@@ -251,6 +251,26 @@ pre.cdw-doc code {
   color: var(--cdw-del-fg);
 }
 
+.cdw-diff-gap {
+  padding: 0.15em 0.6em;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  cursor: pointer;
+  user-select: none;
+  text-align: center;
+  font-size: var(--font-ui-smaller);
+}
+
+.cdw-diff-gap:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+/* ---- Confirm modal ---- */
+.cdw-confirm button {
+  cursor: pointer;
+}
+
 /* ---- Settings ---- */
 .cdw-profiles-intro {
   margin-top: 0;

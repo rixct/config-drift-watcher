@@ -26,6 +26,7 @@ export class ConfirmModal extends Modal {
   }
 
   onOpen(): void {
+    this.contentEl.addClass("cdw-confirm");
     this.titleEl.setText(this.titleText);
     this.contentEl.createEl("p", { text: this.bodyText });
 
@@ -33,16 +34,16 @@ export class ConfirmModal extends Modal {
       .addButton((btn) =>
         btn.setButtonText("Cancel").onClick(() => this.close()),
       )
-      .addButton((btn) =>
-        btn
-          .setButtonText(this.confirmText)
-          .setWarning()
-          .onClick(() => {
-            this.resolved = true;
-            this.resolve(true);
-            this.close();
-          }),
-      );
+      .addButton((btn) => {
+        // Attach the handler first so it is always wired, then style the button
+        // as destructive via a class (version-agnostic, no deprecated API).
+        btn.setButtonText(this.confirmText).onClick(() => {
+          this.resolved = true;
+          this.resolve(true);
+          this.close();
+        });
+        btn.buttonEl.addClass("mod-warning");
+      });
   }
 
   onClose(): void {
