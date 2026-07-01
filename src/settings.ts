@@ -74,6 +74,41 @@ export class ConfigDriftSettingTab extends PluginSettingTab {
         }),
       );
 
+    new Setting(containerEl)
+      .setName("Collapse unchanged lines")
+      .setDesc("Show only changed lines with a little context; hide long runs of unchanged lines behind an expandable placeholder.")
+      .addToggle((t) =>
+        t.setValue(s.collapseUnchanged).onChange(async (v) => {
+          s.collapseUnchanged = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Diff context lines")
+      .setDesc("How many unchanged lines to keep around each change when collapsing.")
+      .addText((t) =>
+        t.setValue(String(s.diffContextLines)).onChange(async (v) => {
+          const n = Number(v);
+          if (Number.isInteger(n) && n >= 0) {
+            s.diffContextLines = n;
+            await this.plugin.saveSettings();
+          }
+        }),
+      );
+
+    new Setting(containerEl).setName("Security").setHeading();
+
+    new Setting(containerEl)
+      .setName("Verify against known_hosts")
+      .setDesc("Check the server host key against ~/.ssh/known_hosts before falling back to pin / trust-on-first-use.")
+      .addToggle((t) =>
+        t.setValue(s.useKnownHosts).onChange(async (v) => {
+          s.useKnownHosts = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+
     new Setting(containerEl).setName("Server profiles").setHeading();
 
     containerEl.createEl("p", {

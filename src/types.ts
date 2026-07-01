@@ -28,6 +28,12 @@ export interface DriftSettings {
   commentPrefixes: string;
   /** SSH connection timeout in milliseconds. */
   connectTimeoutMs: number;
+  /** Collapse long runs of unchanged lines in the inline diff. */
+  collapseUnchanged: boolean;
+  /** Context lines kept around each change when collapsing. */
+  diffContextLines: number;
+  /** Verify the server host key against ~/.ssh/known_hosts before pin/TOFU. */
+  useKnownHosts: boolean;
 }
 
 export const DEFAULT_SETTINGS: DriftSettings = {
@@ -36,16 +42,27 @@ export const DEFAULT_SETTINGS: DriftSettings = {
   ignoreComments: false,
   commentPrefixes: "# ; //",
   connectTimeoutMs: 15000,
+  collapseUnchanged: true,
+  diffContextLines: 3,
+  useKnownHosts: true,
 };
+
+/** Per-block ignore overrides parsed from an `ignore:` directive. */
+export interface IgnoreOverride {
+  whitespace: boolean;
+  comments: boolean;
+}
 
 /** Result of parsing a `drift` code block. */
 export interface ParsedBlock {
   alias: string;
   remotePath: string;
-  /** The documented content (everything after the target line). */
+  /** The documented content (everything after the header). */
   body: string;
-  /** Index of the `target:` line within the block's inner lines. */
-  targetLineIndex: number;
+  /** Index within the block's inner lines where the body begins. */
+  bodyStartIndex: number;
+  /** Per-block ignore override from an `ignore:` directive, if present. */
+  ignore?: IgnoreOverride;
 }
 
 export type DiffLineType = "context" | "added" | "removed";

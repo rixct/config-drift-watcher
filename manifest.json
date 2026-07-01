@@ -1,8 +1,8 @@
 {
   "id": "config-drift-watcher",
   "name": "Config Drift Watcher",
-  "version": "1.0.2",
-  "minAppVersion": "1.5.0",
+  "version": "1.1.0",
+  "minAppVersion": "1.13.0",
   "description": "Detects when a server's actual configuration has diverged from what you documented in your notes. Read-only over SFTP.",
   "author": "rixct",
   "authorUrl": "https://github.com/rixct",

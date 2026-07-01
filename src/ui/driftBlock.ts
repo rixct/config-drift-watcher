@@ -4,7 +4,10 @@ import { parseDriftBlock, BlockParseError } from "../parser";
 import { computeDrift, parseCommentPrefixes } from "../diff";
 import { readRemoteFile, RemoteReadError } from "../sftp";
 import { spliceBlockBody } from "../snapshot";
-import { DriftResult, ParsedBlock, ServerProfile } from "../types";
+import { collapseDiff } from "../collapse";
+import { DiffLine, DriftResult, ParsedBlock, ServerProfile } from "../types";
+
+const KNOWN_HOSTS_PATH = "~/.ssh/known_hosts";
 
 type BadgeState = "unknown" | "checking" | "synced" | "drift" | "error";
 
@@ -37,6 +40,7 @@ async function readRemote(
   const content = await readRemoteFile(profile, remotePath, {
     timeoutMs: plugin.settings.connectTimeoutMs,
     expectedFingerprint: profile.hostFingerprint,
+    knownHostsPath: plugin.settings.useKnownHosts ? KNOWN_HOSTS_PATH : undefined,
     onHostKey: (fp) => {
       seenFingerprint = fp;
     },
@@ -182,12 +186,13 @@ function render(
     diffEl.hide();
     try {
       const remote = await readRemote(plugin, profile, parsed.remotePath);
+      const ig = parsed.ignore;
       const result = computeDrift(parsed.body, remote, {
-        ignoreWhitespace: plugin.settings.ignoreWhitespace,
-        ignoreComments: plugin.settings.ignoreComments,
+        ignoreWhitespace: ig ? ig.whitespace : plugin.settings.ignoreWhitespace,
+        ignoreComments: ig ? ig.comments : plugin.settings.ignoreComments,
         commentPrefixes: parseCommentPrefixes(plugin.settings.commentPrefixes),
       });
-      renderResult(badge, diffEl, result);
+      renderResult(plugin, badge, diffEl, result);
     } catch (e) {
       showError(e instanceof RemoteReadError ? e.message : String(e));
     } finally {
@@ -227,7 +232,16 @@ function render(
   };
 }
 
+function renderDiffLine(container: HTMLElement, line: DiffLine, before?: HTMLElement): void {
+  const row = container.createDiv({ cls: "cdw-diff-line " + line.type });
+  const prefix = line.type === "added" ? "+" : line.type === "removed" ? "−" : " ";
+  row.createSpan({ cls: "cdw-gutter", text: prefix });
+  row.createSpan({ cls: "cdw-content", text: line.value });
+  if (before) container.insertBefore(row, before);
+}
+
 function renderResult(
+  plugin: ConfigDriftWatcherPlugin,
   badge: HTMLElement,
   diffEl: HTMLElement,
   result: DriftResult,
@@ -256,11 +270,27 @@ function renderResult(
   });
 
   const body = diffEl.createDiv({ cls: "cdw-diff-body" });
-  for (const line of result.lines) {
-    const row = body.createDiv({ cls: "cdw-diff-line " + line.type });
-    const prefix = line.type === "added" ? "+" : line.type === "removed" ? "−" : " ";
-    row.createSpan({ cls: "cdw-gutter", text: prefix });
-    row.createSpan({ cls: "cdw-content", text: line.value });
+
+  if (!plugin.settings.collapseUnchanged) {
+    for (const line of result.lines) renderDiffLine(body, line);
+    return;
+  }
+
+  const context = Math.max(0, plugin.settings.diffContextLines);
+  for (const row of collapseDiff(result.lines, context)) {
+    if (row.kind === "line") {
+      renderDiffLine(body, row.line);
+      continue;
+    }
+    // A collapsed gap: a clickable placeholder that expands its hidden lines.
+    const hidden = row.hidden;
+    const gap = body.createDiv({ cls: "cdw-diff-gap" });
+    const n = hidden.length;
+    gap.setText(`\u22ef ${n} unchanged line${n === 1 ? "" : "s"} \u2014 click to expand`);
+    gap.onclick = () => {
+      for (const line of hidden) renderDiffLine(body, line, gap);
+      gap.remove();
+    };
   }
 }
 
@@ -289,7 +319,7 @@ async function writeSnapshot(
     content,
     sec.lineStart,
     sec.lineEnd,
-    parsed.targetLineIndex,
+    parsed.bodyStartIndex,
     remote,
   );
   await plugin.app.vault.modify(file, newContent);

@@ -21,15 +21,39 @@ test("parser: extracts alias, path and body", () => {
   assert.equal(block.alias, "gammastack-stfox");
   assert.equal(block.remotePath, "/etc/network/interfaces");
   assert.equal(block.body, "auto eth0\niface eth0 inet dhcp");
-  assert.equal(block.targetLineIndex, 0);
+  assert.equal(block.bodyStartIndex, 1);
+  assert.equal(block.ignore, undefined);
 });
 
 test("parser: tolerates leading blank lines and extra spacing", () => {
   const block = parseDriftBlock("\n\n  target:  srv:/etc/hosts  \nline1");
   assert.equal(block.alias, "srv");
   assert.equal(block.remotePath, "/etc/hosts");
-  assert.equal(block.targetLineIndex, 2);
+  assert.equal(block.bodyStartIndex, 3);
   assert.equal(block.body, "line1");
+});
+
+test("parser: reads an ignore directive and starts body after it", () => {
+  const block = parseDriftBlock(
+    "target: srv:/etc/nginx/nginx.conf\nignore: whitespace comments\nworker_processes auto;",
+  );
+  assert.deepEqual(block.ignore, { whitespace: true, comments: true });
+  assert.equal(block.body, "worker_processes auto;");
+  assert.equal(block.bodyStartIndex, 2);
+});
+
+test("parser: ignore directive with a single token", () => {
+  const block = parseDriftBlock("target: srv:/x\nignore: whitespace\nline1");
+  assert.deepEqual(block.ignore, { whitespace: true, comments: false });
+  assert.equal(block.body, "line1");
+});
+
+test("parser: a content line that is not a directive starts the body", () => {
+  const block = parseDriftBlock("target: srv:/x\nlisten 80;\nignore: whitespace");
+  // no directive consumed; "ignore:" here is body content
+  assert.equal(block.ignore, undefined);
+  assert.equal(block.bodyStartIndex, 1);
+  assert.equal(block.body, "listen 80;\nignore: whitespace");
 });
 
 test("parser: empty body is allowed", () => {
@@ -111,8 +135,8 @@ test("snapshot: replaces block body, keeps fences and surrounding note", () => {
     "",
     "after",
   ].join("\n");
-  // lineStart = 2 (```drift), lineEnd = 5 (closing ```), targetLineIndex = 0
-  const out = spliceBlockBody(note, 2, 5, 0, "new1\nnew2\n");
+  // lineStart = 2 (```drift), lineEnd = 5 (closing ```), bodyStartIndex = 1
+  const out = spliceBlockBody(note, 2, 5, 1, "new1\nnew2\n");
   assert.equal(
     out,
     [
@@ -131,8 +155,8 @@ test("snapshot: replaces block body, keeps fences and surrounding note", () => {
 
 test("snapshot: fills an empty block body", () => {
   const note = ["```drift", "target: srv:/x", "```"].join("\n");
-  // inner = ["target: srv:/x"], targetLineIndex = 0, lineStart=0, lineEnd=2
-  const out = spliceBlockBody(note, 0, 2, 0, "a\nb");
+  // inner = ["target: srv:/x"], bodyStartIndex = 1, lineStart=0, lineEnd=2
+  const out = spliceBlockBody(note, 0, 2, 1, "a\nb");
   assert.equal(
     out,
     ["```drift", "target: srv:/x", "a", "b", "```"].join("\n"),

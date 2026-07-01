@@ -1,4 +1,4 @@
-import { ParsedBlock } from "./types";
+import { IgnoreOverride, ParsedBlock } from "./types";
 
 /** Thrown when a `drift` block is missing or has a malformed target line. */
 export class BlockParseError extends Error {
@@ -11,12 +11,31 @@ export class BlockParseError extends Error {
 // `target: <alias>:<absolute/path>`. The alias has no colon or whitespace;
 // everything after the first colon following the alias is the remote path.
 const TARGET_RE = /^target:\s*([^\s:]+):(.+)$/;
+// Optional header directive: `ignore: whitespace comments`.
+const IGNORE_RE = /^ignore\s*:\s*(.*)$/i;
+
+/** Parse the value of an `ignore:` directive into flags. */
+function parseIgnore(value: string): IgnoreOverride {
+  const tokens = value.toLowerCase().split(/[\s,]+/).filter((t) => t !== "");
+  const ignore: IgnoreOverride = { whitespace: false, comments: false };
+  for (const t of tokens) {
+    if (t === "whitespace" || t === "ws") ignore.whitespace = true;
+    else if (t === "comments" || t === "comment") ignore.comments = true;
+    else if (t === "none") {
+      ignore.whitespace = false;
+      ignore.comments = false;
+    }
+    // unknown tokens are ignored
+  }
+  return ignore;
+}
 
 /**
  * Parse the inner source of a ```drift code block.
  *
- * The first non-empty line must be `target: alias:/remote/path`. Every line
- * after it is the documented content (the body), preserved verbatim.
+ * The first non-empty line must be `target: alias:/remote/path`. It may be
+ * followed by optional `ignore:` directive lines. Everything after the header
+ * is the documented content (the body), preserved verbatim.
  */
 export function parseDriftBlock(source: string): ParsedBlock {
   const lines = source.split("\n");
@@ -53,7 +72,17 @@ export function parseDriftBlock(source: string): ParsedBlock {
     throw new BlockParseError("Target is missing a remote file path.");
   }
 
-  const body = lines.slice(targetLineIndex + 1).join("\n");
+  // Consume optional `ignore:` directive lines immediately after the target.
+  let ignore: IgnoreOverride | undefined;
+  let bodyStartIndex = targetLineIndex + 1;
+  for (let i = targetLineIndex + 1; i < lines.length; i++) {
+    const m = IGNORE_RE.exec(lines[i].trim());
+    if (!m) break;
+    ignore = parseIgnore(m[1]);
+    bodyStartIndex = i + 1;
+  }
 
-  return { alias, remotePath, body, targetLineIndex };
+  const body = lines.slice(bodyStartIndex).join("\n");
+
+  return { alias, remotePath, body, bodyStartIndex, ignore };
 }

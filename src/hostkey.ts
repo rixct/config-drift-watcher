@@ -10,6 +10,17 @@ export function hostKeyFingerprint(key: Buffer): string {
   return "SHA256:" + digest;
 }
 
+/**
+ * Extract the key type from an SSH host key blob (e.g. "ssh-ed25519").
+ * The wire format begins with a uint32 length followed by the type string.
+ */
+export function hostKeyType(key: Buffer): string {
+  if (key.length < 4) return "";
+  const len = key.readUInt32BE(0);
+  if (len <= 0 || 4 + len > key.length) return "";
+  return key.subarray(4, 4 + len).toString("ascii");
+}
+
 export type HostKeyDecision =
   | { ok: true }
   | { ok: false; expected: string; actual: string };
